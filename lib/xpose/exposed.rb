@@ -63,8 +63,9 @@ module Xpose
     end
 
     def params
+      byebug
       @params ||=
-        if instance.respond_to?("#{conf.singularized_name}_params")
+        if instance.respond_to?("#{conf.singularized_name}_params", true)
           instance.send("#{conf.singularized_name}_params")
         else
           {}
