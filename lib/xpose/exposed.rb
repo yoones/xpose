@@ -46,14 +46,14 @@ module Xpose
     end
 
     def infer_collection
-      klass.send(scope)
+      klass.send(conf.scope)
     end
 
     def infer_record
       source = if instance.respond_to?(conf.pluralized_name)
                  ->{ instance.send(conf.pluralized_name) }
                else
-                 ->{ klass.send(scope) }
+                 ->{ klass.send(conf.scope) }
                end
       if instance.respond_to?(:params) && instance.params.has_key?(:id)
         source.call.find(instance.params[:id])
