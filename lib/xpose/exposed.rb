@@ -63,13 +63,14 @@ module Xpose
     end
 
     def params
-      byebug
-      @params ||=
-        if instance.respond_to?("#{conf.singularized_name}_params", true)
-          instance.send("#{conf.singularized_name}_params")
-        else
-          {}
-        end
+      return {} unless instance.respond_to?(:params)
+      [
+        "#{params[:action]}_#{conf.singularized_name}_params",
+        "#{conf.singularized_name}_params"
+      ].each do |m|
+        return instance.send(m) if instance.respond_to?(m, true)
+      end
+      {}
     end
   end
 end
