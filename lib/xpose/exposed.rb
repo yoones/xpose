@@ -65,7 +65,7 @@ module Xpose
     def params
       return {} unless instance.respond_to?(:params)
       [
-        "#{params[:action]}_#{conf.singularized_name}_params",
+        "#{instance.params[:action]}_#{conf.singularized_name}_params",
         "#{conf.singularized_name}_params"
       ].each do |m|
         return instance.send(m) if instance.respond_to?(m, true)
