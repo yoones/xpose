@@ -3,9 +3,6 @@ module Xpose
     attr_accessor :conf
 
     def initialize(**args)
-      args = ::Xpose::DEFAULT_CONFIGURATION.merge(args).keep_if do |k, v|
-        ::Xpose::DEFAULT_CONFIGURATION.has_key?(k)
-      end
       @conf = ::Xpose::Configuration.build(args)
       raise MissingParameter if conf.name.nil?
     end

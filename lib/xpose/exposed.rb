@@ -3,9 +3,6 @@ module Xpose
     attr_accessor :conf
 
     def initialize(**args)
-      args = ::Xpose::DEFAULT_CONFIGURATION.merge(args).keep_if do |k, v|
-        ::Xpose::DEFAULT_CONFIGURATION.has_key?(k)
-      end
       @conf = ::Xpose::Configuration.build(args)
       conf.name.tap do |name|
         raise MissingParameterError if name.nil?
@@ -14,15 +11,23 @@ module Xpose
 
     def call(instance)
       @instance = instance
-      v = if value.nil? && infer_value
+      v = if conf.value.nil? && conf.infer_value
             (conf.method_name.to_s == conf.pluralized_name ? :collection : :record)
           else
-            value
+            conf.value
           end
       reinterpret_value(v)
     end
 
     private
+
+    attr_reader :instance
+
+    def class_exists?(class_name)
+      Module.const_get(class_name).is_a?(Class)
+    rescue NameError
+      return false
+    end
 
     def klass
       @klass ||= conf.singularized_name.capitalize.constantize
