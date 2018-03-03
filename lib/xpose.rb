@@ -2,7 +2,8 @@ require "xpose/version"
 require "active_support/all"
 
 module Xpose
-  class MissingParameterError < StandardError ; end
+  class UnknownOptionsError < StandardError ; end
+  class MissingOptionError < StandardError ; end
   class UnknownDecoratorError < StandardError ; end
 
   autoload :Configuration, 'xpose/configuration.rb'
