@@ -3,62 +3,61 @@ module Xpose
     attr_accessor :conf
 
     def initialize(**args)
-      @conf = ::Xpose::Configuration.build(args)
-      conf.name.tap do |name|
-        raise MissingParameterError if name.nil?
-      end
+      @conf = ::Xpose::Configuration.new(args)
     end
 
-    def call(instance)
+    def value(instance)
       @instance = instance
-      v = if conf.value.nil? && conf.infer_value
-            (conf.method_name.to_s == conf.pluralized_name ? :collection : :record)
-          else
-            conf.value
-          end
-      reinterpret_value(v)
+      @value ||= interpret_value
+    end
+
+    def decorated_value(instance)
+      @instance = instance
+      @decorated_value ||=
+        if value(instance) && conf.decorate
+          ::Xpose::Decorated.new(conf.to_h).value(instance, value(instance))
+        else
+          nil
+        end
+    end
+
+    def exposed_value(instance)
+      decorated_value(instance) || value(instance)
     end
 
     private
 
     attr_reader :instance
 
-    def class_exists?(class_name)
-      Module.const_get(class_name).is_a?(Class)
-    rescue NameError
-      return false
-    end
-
-    def klass
-      @klass ||= conf.singularized_name.capitalize.constantize
-    end
-
-    def reinterpret_value(v)
-      if v.respond_to?(:call)
-        instance.instance_exec &v
-      elsif v == :collection
-        infer_collection
-      elsif v == :record
-        infer_record
+    def interpret_value
+      if conf.value.respond_to?(:call)
+        instance.instance_exec &conf.value
       else
-        v
+        infer_value
       end
     end
 
+    def infer_value
+      conf.value == :collection ? infer_collection : infer_record
+    end
+
     def infer_collection
-      klass.send(conf.scope)
+      conf.model.send(conf.scope)
+    end
+
+    def record_source
+      if instance.respond_to?(conf.pluralized_name)
+        instance.class.exposed[conf.pluralized_name.to_sym].value(instance)
+      else
+        conf.model.send(conf.scope)
+      end
     end
 
     def infer_record
-      source = if instance.respond_to?(conf.pluralized_name)
-                 ->{ instance.send(conf.pluralized_name) }
-               else
-                 ->{ klass.send(conf.scope) }
-               end
-      if instance.respond_to?(:params) && instance.params.has_key?(:id)
-        source.call.find(instance.params[:id])
+      if instance.respond_to?(:params, true) && instance.params.has_key?(:id)
+        record_source.find(instance.params[:id])
       else
-        source.call.new(params)
+        record_source.new(params)
       end
     end
 
@@ -71,6 +70,12 @@ module Xpose
         return instance.send(m) if instance.respond_to?(m, true)
       end
       {}
+    end
+
+    def class_exists?(class_name)
+      Module.const_get(class_name).is_a?(Class)
+    rescue NameError
+      return false
     end
   end
 end

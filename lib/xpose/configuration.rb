@@ -1,29 +1,48 @@
 module Xpose
-  module Configuration
+  class Configuration
+
     DEFAULT_VALUES = {
       name: nil,
       value: nil,
       decorate: true,
       decorator: :infer,
-      infer_value: true,
       scope: :all
+      # source: :infer (:infer, :method, : .call : ...)
     }.freeze
 
-    def self.build(**args)
-      args = DEFAULT_VALUES.merge(args).keep_if do |k, v|
-        DEFAULT_VALUES.has_key?(k)
+    def initialize(**options)
+      @options = options
+      permit_options! unless options.fetch(:permissive, false)
+      build_config
+      build_internal_defaults
+    end
+
+    def method_missing(method, *args, &block)
+      config.send(method, *args, &block)
+    end
+
+    def model
+      config.singularized_name.capitalize.constantize
+    end
+
+    private
+
+    attr_accessor :config
+
+    def permit_options!
+      (@options.keys - DEFAULT_VALUES.keys).tap do |unknown_keys|
+        raise UnknownOptionsError.new(unknown_keys) unless unknown_keys.empty?
       end
-      OpenStruct.new(args).tap do |conf|
-        conf.name = conf.name.to_s
-        conf.method_name = conf.name.to_sym
-        conf.instance_variable_name = :"@#{conf.method_name}"
+    end
 
-        conf.singularized_name = conf.name.singularize
-        conf.pluralized_name = conf.name.pluralize
+    def build_config
+      @config = OpenStruct.new(DEFAULT_VALUES.merge(@options)).tap do |c|
+        raise MissingOptionsError.new(:name) if c.name.blank?
 
-        conf.decorated_name = "decorated_#{conf.name}"
-        conf.decorated_method_name = conf.decorated_name.to_sym
-        conf.decorated_instance_variable_name = :"@decorated_#{conf.method_name}"
+        c.name = c.name.to_sym
+        c.ivar_name = :"@#{c.name}"
+        c.singularized_name = c.name.to_s.singularize
+        c.pluralized_name = c.singularized_name.pluralize
       end
     end
   end
